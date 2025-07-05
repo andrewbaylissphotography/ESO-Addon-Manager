@@ -34,6 +34,7 @@ If you see a security warning, open PowerShell and run:
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
 
 
 
