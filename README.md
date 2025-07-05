@@ -27,7 +27,7 @@ A simple PowerShell-based tool to download and install popular Elder Scrolls Onl
 
 ## 🚀 Quick Start
 
-1. 📥 [Download ESO-AddonManager.ps1](https://raw.githubusercontent.com/YOUR_USERNAME/ESO-Addon-Manager/main/ESO-AddonManager.ps1)
+1. 📥 [Download ESO-AddonManager.ps1](https://raw.githubusercontent.com/andrewbaylissphotography/ESO-Addon-Manager/main/ESO-AddonManager.ps1)
 2. Right-click the file → **Run with PowerShell**
 
 If you see a security warning, open PowerShell and run:
