@@ -111,6 +111,3 @@ This project is licensed under the MIT License.
 
 Addon ZIPs are downloaded directly from the official ESOUI CDN.
 All credit for the addons goes to their respective authors.
-
-```md
-[Download ESO-AddonManager.ps1](https://raw.githubusercontent.com/YOUR_USERNAME/ESO-Addon-Manager/main/ESO-AddonManager.ps1)
