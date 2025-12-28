@@ -12,28 +12,60 @@ Write-Host "[INFO] AddOn folder:    $AddonFolder`n"
 if (-not (Test-Path $DownloadFolder)) { New-Item -Path $DownloadFolder -ItemType Directory | Out-Null }
 if (-not (Test-Path $AddonFolder)) { New-Item -Path $AddonFolder -ItemType Directory | Out-Null }
 
-# Updated Addons list
+# Addons list now using FileID instead of hardcoded URLs
 $Addons = @(
-    @{AddonType="Main"; Name='Potion Maker (for Alchemy Crafting)'; Url='https://cdn.esoui.com/downloads/file405/PotionMaker_v5.10.2.zip'}
-    @{AddonType="Main"; Name='Dolgubons Lazy Writ Crafter'; Url='https://cdn.esoui.com/downloads/file1346/DolgubonsLazyWritCreator-4.0.1.3.zip'}
-    @{AddonType="Main"; Name='HarvestMap'; Url='https://cdn.esoui.com/downloads/file57/HarvestMap-3_16_2.zip'}
-    @{AddonType="Main"; Name='SkyShards'; Url='https://cdn.esoui.com/downloads/file128/SkyShards_v1059_2.zip'; }
-    @{AddonType="Main"; Name='VotansMiniMap'; Url='https://cdn.esoui.com/downloads/file1399/VotansMiniMap_v2.1.5.zip'}
-    @{Name='CustomCompassPins'; Url='https://cdn.esoui.com/downloads/file185/CustomCompassPins_v137.zip'}
-    @{Name='LibAddonMenu'; Url='https://cdn.esoui.com/downloads/file7/LibAddonMenu-2.0r40.zip'}
-    @{Name='LibAddonMenu-2.0'; Url='https://cdn.esoui.com/downloads/file7/LibAddonMenu-2.0r40.zip'}
-    @{Name='LibAsync'; Url='https://cdn.esoui.com/downloads/file2125/LibAsync_v3.0.2.zip'}
-    @{Name='LibChatMessage'; Url='https://cdn.esoui.com/downloads/file2382/LibChatMessage_1_2_2.zip'}
-    @{Name='LibDebugLogger'; Url='https://cdn.esoui.com/downloads/file2275/LibDebugLogger_2_5_2.zip'}
-    @{Name='LibGPS'; Url='https://cdn.esoui.com/downloads/file601/LibGPS_3_3_3.zip'}
-    @{Name='LibHarvensAddonSettings'; Url='https://cdn.esoui.com/downloads/file584/LibHarvensAddonSettings_v2.0.6.zip'}
-    @{Name='LibLazyCrafting'; Url='https://cdn.esoui.com/downloads/file1594/LibLazyCrafting-4.024.zip'}
-    @{Name='LibMainMenu-2.0'; Url='https://cdn.esoui.com/downloads/file2118/LibMainMenu-2.0_v4.4.0.zip'}
-    @{Name='LibMapData'; Url='https://cdn.esoui.com/downloads/file3353/LibMapData_v117.zip'}
-    @{Name='LibMapPing'; Url='https://cdn.esoui.com/downloads/file1302/LibMapPing_2_1_0.zip'}
-    @{Name='LibMapPins-1.0'; Url='https://cdn.esoui.com/downloads/file563/LibMapPins_v10045.zip'}
-    @{Name='MapPins'; Url='https://cdn.esoui.com/downloads/file1881/1750886267-MapPins.zip'}
+    @{ AddonType="Main"; Name='Auto Recharge'; FileID=1091 }
+    @{ AddonType="Main"; Name='Enchantment Learner'; FileID=3059 }
+    @{ AddonType="Main"; Name='Potion Maker (for Alchemy Crafting)'; FileID=405 }
+    @{ AddonType="Main"; Name='Dolgubons Lazy Writ Crafter'; FileID=1346 }
+    @{ AddonType="Main"; Name='HarvestMap'; FileID=57 }
+    @{ AddonType="Main"; Name='SkyShards'; FileID=128 }
+    @{ AddonType="Main"; Name='VotansMiniMap'; FileID=1399 }
+    @{ Name='CustomCompassPins'; FileID=185 }
+    @{ Name='LibAddonMenu'; FileID=7 }
+    @{ Name='LibAddonMenu-2.0'; FileID=7 }
+    @{ Name='LibAsync'; FileID=2125 }
+    @{ Name='LibChatMessage'; FileID=2382 }
+    @{ Name='LibDebugLogger'; FileID=2275 }
+    @{ Name='LibGPS'; FileID=601 }
+    @{ Name='LibHarvensAddonSettings'; FileID=584 }
+    @{ Name='LibLazyCrafting'; FileID=1594 }
+    @{ Name='LibMainMenu-2.0'; FileID=2118 }
+    @{ Name='LibMapData'; FileID=3353 }
+    @{ Name='LibMapPing'; FileID=1302 }
+    @{ Name='LibMapPins-1.0'; FileID=563 }
+    @{ Name='MapPins'; FileID=1881 }
+    @{ Name='LibCustomMenu'; FileID=1146 }
+    @{ Name='LibAlchemyStation'; FileID=2628 }
 )
+
+function Get-LatestAddonUrlAndFilename {
+    param([int]$fileID)
+
+    $baseUrl = "https://cdn.esoui.com/downloads/file$fileID/"
+
+    Write-Host "[INFO] Requesting latest addon info for fileID $fileID from $baseUrl"
+
+    try {
+        # Get the response headers without downloading the body
+        $response = Invoke-WebRequest -Uri $baseUrl -MaximumRedirection 0 -ErrorAction Stop -Method Get
+
+        $contentDisposition = $response.Headers['Content-Disposition']
+        if ($contentDisposition -and $contentDisposition -match 'filename="?([^"]+)"?') {
+            $fileName = $matches[1]
+            Write-Host "[INFO] Latest filename detected: $fileName"
+            return @{ Url = $baseUrl; FileName = $fileName }
+        }
+        else {
+            Write-Warning "No Content-Disposition filename found for fileID $fileID. Using fallback filename."
+            return @{ Url = $baseUrl; FileName = "Addon_$fileID.zip" }
+        }
+    }
+    catch {
+        Write-Warning ("Error fetching latest URL for FileID {0}: {1}" -f $fileID, $_.Exception.Message)
+        return $null
+    }
+}
 
 function Get-DependenciesFromAddonFile {
     param([string]$AddonFilePath)
@@ -66,20 +98,33 @@ function Install-Addon {
     param($Addon)
 
     $Name = $Addon.Name
-    $Url = $Addon.Url
+    $FileID = $Addon.FileID
 
     Write-Host "Starting install of $Name..."
 
-    $zipPath = Join-Path $DownloadFolder "$Name.zip"
+    $info = Get-LatestAddonUrlAndFilename -fileID $FileID
+    if (-not $info) {
+        Write-Warning ("Skipping {0} due to failure retrieving latest info." -f $Name)
+        return
+    }
+
+    $url = $info.Url
+    $fileName = $info.FileName
+    $zipPath = Join-Path $DownloadFolder $fileName
 
     # Download ZIP
-    try {
-        Invoke-WebRequest -Uri $Url -OutFile $zipPath -UseBasicParsing
-        Write-Host "Downloaded $Name to $zipPath"
+    if (-not (Test-Path $zipPath)) {
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+            Write-Host "Downloaded $Name to $zipPath"
+        }
+        catch {
+            Write-Warning "Failed to download ${Name}: $_"
+            return
+        }
     }
-    catch {
-        Write-Warning "Failed to download ${Name}: $_"
-        return
+    else {
+        Write-Host "[INFO] File already downloaded: $zipPath"
     }
 
     # Extract ZIP using system temp directory
@@ -153,9 +198,9 @@ $selection = $Addons | ForEach-Object {
     [PSCustomObject]@{
         Type = $_.AddonType
         Name = $_.Name
-        Url  = $_.Url
+        FileID = $_.FileID
     }
-} | Sort-Object -Property Type -Descending |
+} | Sort-Object -Property Type, -Descending
     Out-GridView -Title "Select ESO Addon(s) to Install" -PassThru
 
 if (-not $selection) {
